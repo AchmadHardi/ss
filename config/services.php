@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+        'xendit' => [
+        'base_url' => env('XENDIT_BASE_URL'),
+        'username' => env('XENDIT_API_USERNAME'),
+        'password' => env('XENDIT_API_PASSWORD'),
+    ],
+
 ];
