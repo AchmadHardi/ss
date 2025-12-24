@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Helpers\Helper;
 use Illuminate\Http\Request;
-use App\Services\Customer\CustomerService;
-use Illuminate\Support\Facades\Response;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Response;
+use App\Services\Customer\CustomerService;
 
 class CustomerController extends Controller
 {
@@ -53,19 +54,19 @@ class CustomerController extends Controller
         return response()->json($data, 201);
     }
 
-    public function referralEntryWeb()
-    {
-        return response()->file(resource_path('assets/html/entry-prospek-web/entry-prospek.html'));
-    }
+    // public function referralEntryWeb()
+    // {
+    //     return response()->file(resource_path('assets/html/entry-prospek-web/entry-prospek.html'));
+    // }
 
-    public function referralAfterSubmit()
-    {
-        return response()->file(resource_path('assets/html/entry-prospek-web/after-submit.html'));
-    }
+    // public function referralAfterSubmit()
+    // {
+    //     return response()->file(resource_path('assets/html/entry-prospek-web/after-submit.html'));
+    // }
 
     public function getLeadCustomer(Request $request)
     {
-        $data = $this->service->getLeadCustomer($request->all());
+        $data = $this->service->getLeadCustomer($request);
         return response()->json($data);
     }
 
@@ -77,49 +78,74 @@ class CustomerController extends Controller
 
     public function previewFAB(Request $request)
     {
-        $pdf = $this->service->previewFAB($request->all());
+        // Mengambil data session
+        $session = Helper::getAuthorizationTokenData($request);
+
+        // Mengirim kedua parameter ke service: body (request data) dan session
+        // Menggunakan $request->all() untuk body (data) dan session untuk sesi
+        $pdf = $this->service->previewFAB($request->all(), $session);
+
+        // Mengembalikan response PDF
         return response($pdf, 200)->header('Content-Type', 'application/pdf');
     }
 
-    public function generateFAB($task_id)
+    public function generateFAB(Request $request, $task_id)
     {
-        $pdf = $this->service->generateFAB($task_id);
-        return response($pdf, 200)->header('Content-Type', 'application/pdf');
+        try {
+            $pdf = $this->service->generateFAB($task_id, $request->query());
+
+            return response($pdf, 200)
+                ->header('Content-Type', 'application/pdf')
+                ->header(
+                    'Content-Disposition',
+                    'inline; filename="' . $task_id . '.pdf"'
+                );
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function generateFKB(Request $request, $task_id)
     {
         $pdf = $this->service->generateFKB($request->all(), $task_id);
-        return response($pdf, 201)->header('Content-Type', 'application/pdf');
+
+        return response($pdf, 201)
+            ->header('Content-Type', 'application/pdf');
     }
+
 
     public function submitFAB(Request $request, $task_id)
     {
-        $data = $this->service->submitFAB($request->all(), $task_id);
+        $data = $this->service->submitFAB($request, $task_id);
         return response()->json($data);
     }
 
     public function uploadKTP(Request $request)
     {
-        $data = $this->service->uploadKTP($request->all(), $request->file());
+        $data = $this->service->uploadKTP($request);
         return response()->json($data, 201);
     }
 
-    public function uploadSignature(Request $request, $task_id)
+    public function uploadSignature(Request $request, string $task_id)
     {
-        $data = $this->service->uploadSignature($request->all(), $request->file(), $task_id);
+        $data = $this->service->uploadSignature(
+            $request,
+            $task_id
+        );
+
         return response()->json($data, 201);
     }
 
     public function uploadFABDocument(Request $request)
     {
-        $data = $this->service->uploadFABDocument($request->all(), $request->file());
-        return response()->json($data);
+        $data = $this->service->uploadFABDocument($request);
+        return response()->json($data, 200);
     }
 
     public function termsAndCondition()
     {
-        $data = $this->service->termsAndCondition();
-        return response()->json($data);
+        return $this->service->termsAndCondition();
     }
 }

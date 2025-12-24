@@ -1,11 +1,12 @@
 <?php
 
-use App\Http\Controllers\Customer\CustomerController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Customer\PointController;
 use App\Http\Controllers\Customer\RegionController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\ProfileController;
+use App\Http\Controllers\Customer\CustomerController;
+use App\Http\Controllers\Customer\TransactionController;
 use App\Http\Controllers\Sales\SalesDashboardController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Customer\DowngradeUpgradeController;
@@ -88,12 +89,9 @@ Route::prefix('customer')
         Route::get('/region/odp', [RegionController::class, 'odpList']);
         Route::get('/region/odp/nearest', [RegionController::class, 'nearestODP']);
 
-        Route::get('/retail/entri-prospek/user/{task_id}', [CustomerController::class, 'getFormProspekEntry']);
-        Route::post('/retail/entri-prospek', [CustomerController::class, 'customerEntriDataProspek']);
-        Route::post('/idplay/entri-prospek', [CustomerController::class, 'idplayEntriDataProspek']);
-        Route::post('/referral/entri-prospek', [CustomerController::class, 'referralEntriDataProspek']);
-        Route::get('/referral/entri-prospek-web', [CustomerController::class, 'referralEntryWeb']);
-        Route::get('/referral/after-submit', [CustomerController::class, 'referralAfterSubmit']);
+
+        // Route::get('/referral/entri-prospek-web', [CustomerController::class, 'referralEntryWeb']);
+        // Route::get('/referral/after-submit', [CustomerController::class, 'referralAfterSubmit']);
         Route::get('/idmall-customer-activation', [CustomerController::class, 'getLeadCustomer']);
         Route::post('/idmall-push-lead-customer', [CustomerController::class, 'pushLeadCustomer']);
 
@@ -102,8 +100,18 @@ Route::prefix('customer')
         Route::get('/fkb/generate-pdf/{task_id}', [CustomerController::class, 'generateFKB']);
         Route::post('/submit-fab/{task_id}', [CustomerController::class, 'submitFAB']);
 
-        Route::post('/retail/fkb/user', [CustomerController::class, 'uploadKTP']);
+        Route::post('/retail/fkb/user', [CustomerController::class, 'uploadKTP']); // Ketika soft delete masih bug
         Route::post('/signature/upload/{task_id}', [CustomerController::class, 'uploadSignature']);
         Route::post('/upload-file', [CustomerController::class, 'uploadFABDocument']);
         Route::get('/terms-and-condition', [CustomerController::class, 'termsAndCondition']);
+
+        //History Pembayaran
+        Route::get('/retail/entri-prospek/user/{task_id}', [CustomerController::class, 'getFormProspekEntry']);
+        Route::post('/retail/entri-prospek', [CustomerController::class, 'customerEntriDataProspek']);
+        Route::post('/idplay/entri-prospek', [CustomerController::class, 'idplayEntriDataProspek']);
+        Route::post('/referral/entri-prospek', [CustomerController::class, 'referralEntriDataProspek']);
+
+        Route::get('/transaction/submitted/{task_id}', [TransactionController::class, 'submitted']);
+        Route::get('/transaction/history', [TransactionController::class, 'history']);
+
     });

@@ -7,6 +7,10 @@ use Carbon\Carbon;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
+use phpseclib3\Net\SFTP;
+use Illuminate\Support\Facades\Storage;
+use League\Flysystem\UnableToDeleteFile;
 
 class Helper
 {
@@ -31,12 +35,13 @@ class Helper
     {
         $secret = $secret ?: env('JWT_SECRET', 'your-secret-key');
 
-        // 🔥 FIX UTAMA
         if (is_object($payload)) {
             $payload = [
-                'user_id' => $payload->user_id ?? null,
+                'user_id' => $payload->user_id ?? $payload->sub ?? null, // 🔥 pakai sub jika user_id tidak ada
                 'email'   => $payload->email ?? null,
                 'role'    => $payload->role ?? null,
+                'area'    => $payload->area ?? null,
+                'position_code' => $payload->position_code ?? null,
             ];
         }
 
@@ -188,8 +193,194 @@ class Helper
         return $bandwidth ?: null;
     }
 
-    public static function emptyOrRows($rows)
+    public static function getAuthorizationTokenData(Request $request): ?array
     {
-        return $rows ?? [];
+        $authHeader = $request->header('Authorization');
+
+        if (!$authHeader) {
+            return null;
+        }
+
+        if (!preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+            return null;
+        }
+
+        $token = $matches[1];
+
+        if ($token === '{{jwt_token}}') {
+            return null;
+        }
+
+        try {
+            $decoded = JWT::decode($token, new Key(env('JWT_SECRET'), 'HS256'));
+            $decodedArr = json_decode(json_encode($decoded), true);
+
+            // 🔥 fallback ke sub jika user_id tidak ada
+            if (!isset($decodedArr['user_id']) && isset($decodedArr['sub'])) {
+                $decodedArr['user_id'] = $decodedArr['sub'];
+            }
+
+            return $decodedArr;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
+
+    /**
+     * Ambil token dari header Authorization
+     * Format: Bearer xxxxx
+     */
+    private static function getTokenFromHeaders(Request $request): ?string
+    {
+        $header = $request->header('Authorization');
+
+        if (!$header) {
+            return null;
+        }
+
+        if (preg_match('/Bearer\s(\S+)/', $header, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
+    }
+
+    //  public static function getOSSAssetURL()
+    // {
+    //     return env('OSS_ASSET_URL', 'https://example.com/oss');
+    // }
+
+    /**
+     * Fetch a file from OSS Storage
+     */
+    public static function fetchFileFromOSS($filePath)
+    {
+        $ossUrl = self::getOSSAssetURL();
+        $fileUrl = "{$ossUrl}/{$filePath}";
+
+        // You can use file_get_contents or any library like Guzzle to fetch the file
+        return file_get_contents($fileUrl);
+    }
+
+    /**
+     * Utility method to download a file from OSS Storage
+     * (Assuming OSS files are public)
+     */
+    public static function downloadFileFromOSS($filePath, $destination)
+    {
+        $content = self::fetchFileFromOSS($filePath);
+
+        file_put_contents($destination, $content);
+    }
+
+    public static function getOSSAssetURL()
+    {
+        // Menentukan base URL berdasarkan environment
+        if (env('APP_ENV') == 'local') {
+            // Development environment
+            $base_url = 'http://' . env('DEV_OSS_HOST');
+        } elseif (env('APP_ENV') == 'production') {
+            // Production environment
+            $base_url = 'https://' . env('PRODUCTION_OSS_DOMAIN');
+        } else {
+            // Default jika environment tidak ditemukan
+            $base_url = 'http://localhost';
+        }
+
+        return $base_url;
+    }
+
+    public static function getProfileSales($user_id)
+    {
+        $result = DB::select(
+            'SELECT * FROM tis_main.user_l WHERE UserID = ?',
+            [$user_id]
+        );
+
+        return [
+            'status' => 'SUCCESS',
+            'data'   => $result,
+        ];
+    }
+
+    public static function rupiahFormatter(array $payload)
+    {
+        $amount = $payload['amount'] ?? 0;
+
+        return 'Rp ' . number_format($amount, 0, ',', '.');
+    }
+
+    public static function utcNow()
+    {
+        return Carbon::now('UTC')->format('Y-m-d H:i:s');
+    }
+
+    public static function generateFABV2(array $payload)
+    {
+
+        $pdf = Pdf::loadView('pdf.fab', $payload)
+            ->setPaper('legal', 'portrait');
+
+        return $pdf->output();
+    }
+
+    public function uploadMultipleBuffer(array $files)
+    {
+        foreach ($files as $file) {
+            $dir = dirname($file['target_dir']);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0777, true);
+            }
+
+            file_put_contents($file['target_dir'], $file['buffer']);
+        }
+    }
+
+    public static function uploadBufferToLocal(array $payload)
+    {
+        foreach ($payload as $file) {
+            if (!isset($file['buffer'], $file['target_dir'])) {
+                throw new \Exception('Invalid upload payload');
+            }
+
+            // pastikan folder ada
+            $dir = dirname($file['target_dir']);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0777, true);
+            }
+
+            file_put_contents($file['target_dir'], $file['buffer']);
+        }
+
+        return true;
+    }
+
+    // public static function deleteFileFromServer(string $filename): array
+    // {
+    // try {
+    //     // ❌ jangan pakai exists()
+    //     Storage::disk('sftp_oss')->delete($filename);
+
+    //     return [
+    //         'status' => 'success',
+    //         'code'   => 200,
+    //     ];
+    // } catch (\Throwable $e) {
+
+    //     // kalau file memang tidak ada → anggap aman
+    //     if (
+    //         str_contains($e->getMessage(), 'Unable to check existence') ||
+    //         str_contains($e->getMessage(), 'No such file')
+    //     ) {
+    //         return [
+    //             'status'  => 'success',
+    //             'code'    => 200,
+    //             'message' => 'File not found, skipped delete',
+    //         ];
+    //     }
+
+    //     throw $e;
+    //     }
+    // }
+
 }

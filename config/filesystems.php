@@ -30,6 +30,7 @@ return [
 
     'disks' => [
 
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
@@ -60,6 +61,15 @@ return [
             'report' => false,
         ],
 
+        // 'sftp_oss' => [
+        //     'driver'   => 'sftp',
+        //     'host'     => env('SFTP_HOST'),
+        //     'username' => env('SFTP_USERNAME'),
+        //     'password' => env('SFTP_PASSWORD'),
+        //     'port'     => (int) env('SFTP_PORT', 22),
+        //     'root'     => '/var/www/html/apps/oss/arsip_file',
+        //     'timeout'  => 30,
+        // ],
     ],
 
     /*
@@ -76,5 +86,6 @@ return [
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
+
 
 ];
