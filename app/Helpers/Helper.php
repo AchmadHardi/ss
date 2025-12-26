@@ -355,6 +355,11 @@ class Helper
         return true;
     }
 
+    public static function capitalizeFirstLetter($string)
+    {
+        if (!$string) return null;
+        return ucfirst(strtolower($string));
+    }
     // public static function deleteFileFromServer(string $filename): array
     // {
     // try {

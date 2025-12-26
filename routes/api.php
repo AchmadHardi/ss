@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Customer\PointController;
 use App\Http\Controllers\Customer\RegionController;
 use App\Http\Controllers\Customer\PaymentController;
+use App\Http\Controllers\Customer\ProductController;
 use App\Http\Controllers\Customer\ProfileController;
 use App\Http\Controllers\Customer\CustomerController;
 use App\Http\Controllers\Customer\TransactionController;
@@ -113,5 +114,9 @@ Route::prefix('customer')
 
         Route::get('/transaction/submitted/{task_id}', [TransactionController::class, 'submitted']);
         Route::get('/transaction/history', [TransactionController::class, 'history']);
+
+        //Entri Data Prospek
+
+        Route::get('/common/products', [ProductController::class, 'index']);
 
     });
